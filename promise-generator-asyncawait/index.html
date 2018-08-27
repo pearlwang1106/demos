@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>异步demo</title>
+    <style type="text/css">
+        .file1,
+        .file2,
+        .file3 {
+            display: flex;
+            margin: 20px auto;
+        }
+        .progress-bar-warpper {
+            position: relative;
+            display: inline-block;
+            height: 22px;
+            width: 400px;
+            background: #c0c0c0;
+        }
+        .progress-bar {
+            display: inline-block;
+            height: 22px;
+            width: 0;
+            background-color: #ff6347;
+        }
+        .progress-num {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            margin: auto;
+            width: 25px;
+        }
+    </style>
+</head>
+<body>
+    <section class="file1">
+        <span>文件1：</span>
+        <span class="progress-bar-warpper">
+            <span class="progress-bar"></span>
+            <span class="progress-num">0%</span>
+        </span>
+    </section>
+    <section class="file2">
+        <span>文件2：</span>
+        <span class="progress-bar-warpper">
+            <span class="progress-bar"></span>
+            <span class="progress-num">0%</span>
+        </span>
+    </section>
+    <section class="file3">
+        <span>文件3：</span>
+        <span class="progress-bar-warpper">
+            <span class="progress-bar"></span>
+            <span class="progress-num">0%</span>
+        </span>
+    </section>
+</body>
+<script type="text/javascript">
+    let f1 = document.querySelector('.file1');
+    let f2 = document.querySelector('.file2');
+    let f3 = document.querySelector('.file3');
+
+    function Progress(dom) {
+        return new Promise(function(resolve, reject) {
+            var timer = setInterval(function() {
+                var bar = dom.querySelector('.progress-bar');
+                var num = dom.querySelector('.progress-num');
+                var ow = bar.style.width;
+                var cw = Number(ow.slice(0, ow.length - 1)) + 1;
+                bar.style.width = Number(cw) + '%';
+                num.innerHTML = bar.style.width;
+                if(cw >= 100) {
+                    clearInterval(timer);
+                    resolve();
+                }
+            }, 50);
+        });
+
+    }
+
+    function co(gen) {
+        let ctx = this;
+        let args = Array.prototype.slice.call(arguments, 1);
+
+        return new Promise(function(resolve, reject) {
+            if (typeof gen === 'function') {
+                gen = gen.apply(ctx, args);
+            }
+            if (!gen || typeof gen.next !== 'function') {
+                return resolve(gen);
+            }
+
+            onResolved();
+
+            function onResolved(data) {
+                var ret;
+                try {
+                    ret = gen.next(data);
+                } catch (e) {
+                    return reject(e);
+                }
+                next(ret);
+                return null;
+            }
+
+            function onReject(err) {
+                var ret;
+                try {
+                    ret = gen.throw(err)
+                } catch (e) {
+                    return reject(e);
+                }
+                next(ret);
+            }
+
+            function next(ret) {
+                // 如果 done 是 true，则表示执行完成
+                if (ret.done) {
+                    return resolve(ret.value);
+                }
+                // 根据 Demo 的情况我们知道我们的 value 就是 promise，其他情况不做扩展，
+                //  可以参考 co 源码库：https://github.com/tj/co
+                if (ret.value instanceof Promise) {
+                    return ret.value.then(onResolved, onReject);
+                }
+                return onRejected(new TypeError('type error'));
+            }
+
+        });
+
+    }
+
+    function* gen() {
+        yield Progress(f1);
+        yield Progress(f2);
+        yield Progress(f3);
+        return;
+    }
+
+    co(gen);
+
+
+</script>
+</html>
